@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alerta Familiar</title>
+
+<!-- PWA: esto permite "Agregar a pantalla de inicio" con ícono y nombre propios -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#16243f">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Alerta Familiar">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@500&display=swap');
+
+  :root{
+    --navy: #16243f;
+    --navy-deep: #0d1830;
+    --paper: #f8f4ec;
+    --orange: #e8590c;
+    --orange-deep: #c94a08;
+    --sage: #5c8368;
+    --charcoal: #2a2a28;
+    --line: rgba(22,36,63,0.14);
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--paper);
+    color: var(--charcoal);
+    font-family: 'Source Serif 4', serif;
+    min-height: 100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: 32px 16px 64px;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom: 28px;
+  }
+  .brand .dot{
+    width:12px;height:12px;border-radius:50%;
+    background: var(--orange);
+    box-shadow: 0 0 0 4px rgba(232,89,12,0.15);
+  }
+  .brand span{
+    font-family:'Archivo', sans-serif;
+    font-weight:800;
+    letter-spacing: 0.02em;
+    font-size: 15px;
+    color: var(--navy);
+    text-transform: uppercase;
+  }
+
+  .stage{ width:100%; max-width: 420px; }
+
+  /* ---------- HOME ---------- */
+  .home-hero{
+    background: var(--navy);
+    color: var(--paper);
+    border-radius: 18px;
+    padding: 30px 26px 26px;
+    position: relative;
+    overflow:hidden;
+    margin-bottom: 22px;
+  }
+  .home-hero::before{
+    content:"";
+    position:absolute; top:-40px; right:-40px;
+    width:150px;height:150px;border-radius:50%;
+    background: radial-gradient(circle, rgba(232,89,12,0.35), transparent 70%);
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #f2b48a;
+    margin-bottom: 10px;
+  }
+  .home-hero h1{
+    font-family:'Archivo', sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    line-height:1.15;
+    margin: 0 0 12px;
+  }
+  .home-hero p{
+    font-size: 15px;
+    line-height:1.5;
+    color: #d9dce6;
+    margin:0;
+  }
+
+  .choice-row{ display:flex; flex-direction:column; gap:12px; }
+  .choice{
+    background:#fff;
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 18px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    cursor:pointer;
+    text-align:left;
+    font-family: inherit;
+    transition: border-color .15s, transform .15s;
+  }
+  .choice:hover{ border-color: var(--orange); transform: translateY(-1px); }
+  .choice .icon{
+    font-size: 22px;
+    width:40px;height:40px;
+    border-radius:10px;
+    background: var(--paper);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .choice .label-title{
+    font-family:'Archivo', sans-serif;
+    font-weight:700;
+    font-size: 15px;
+    color: var(--navy);
+    margin-bottom: 3px;
+  }
+  .choice .label-sub{
+    font-size: 13px;
+    color: #6a6a66;
+  }
+
+  /* ---------- CARD ---------- */
+  .card-title{
+    font-family:'Archivo', sans-serif;
+    font-weight:800;
+    font-size: 20px;
+    color: var(--navy);
+    margin: 4px 0 18px;
+  }
+  .back{
+    background:none;border:none;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color: var(--navy);
+    opacity:0.6;
+    cursor:pointer;
+    padding:0 0 14px;
+    text-align:left;
+  }
+  .back:hover{ opacity:1; }
+
+  label{
+    display:block;
+    font-family:'Archivo', sans-serif;
+    font-weight:700;
+    font-size: 12px;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    color: var(--navy);
+    margin: 16px 0 6px;
+  }
+  input{
+    width:100%;
+    padding: 11px 13px;
+    border-radius: 9px;
+    border: 1.5px solid var(--line);
+    background:#fff;
+    font-family:'Source Serif 4', serif;
+    font-size: 15px;
+    color: var(--charcoal);
+  }
+  input:focus{ outline:none; border-color: var(--orange); }
+
+  .contact-row{ display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
+  .contact-row input{ flex:1; min-width:110px; }
+  .contact-row select.c-channel{
+    flex-basis:100%;
+    padding: 9px 10px;
+    border-radius: 9px;
+    border: 1.5px solid var(--line);
+    background:#fff;
+    font-family:'Source Serif 4', serif;
+    font-size: 13.5px;
+    color: var(--charcoal);
+  }
+  .contact-row select.c-channel:focus{ outline:none; border-color: var(--orange); }
+  .remove-btn{
+    background:none;border:none;color:#a44;
+    font-size:18px; cursor:pointer; padding: 0 6px;
+  }
+  .pick-row{ display:flex; gap:8px; margin-top:14px; }
+  .pick-contact-btn, .add-contact{
+    flex:1;
+    background:none;
+    border: 1.5px dashed var(--line);
+    color: var(--navy);
+    font-family:'Archivo', sans-serif;
+    font-weight:700;
+    font-size:14px;
+    padding: 13px 8px;
+    border-radius: 11px;
+    cursor:pointer;
+  }
+  .pick-contact-btn{
+    border-style: solid;
+    border-color: var(--orange);
+    background: rgba(232,89,12,0.06);
+  }
+  .pick-contact-btn:hover{ background: rgba(232,89,12,0.14); }
+  .add-contact:hover{ border-color: var(--orange); color: var(--orange-deep); }
+
+  .primary-btn{
+    margin-top: 22px;
+    width:100%;
+    background: var(--orange);
+    color:#fff;
+    font-family:'Archivo', sans-serif;
+    font-weight:800;
+    font-size: 15px;
+    letter-spacing:0.01em;
+    border:none;
+    padding: 15px;
+    border-radius: 11px;
+    cursor:pointer;
+    box-shadow: 0 6px 16px rgba(232,89,12,0.28);
+  }
+  .primary-btn:hover{ background: var(--orange-deep); }
+  .primary-btn:disabled{ background:#c9beae; box-shadow:none; cursor:not-allowed; }
+  .hint{ font-size:12.5px; color:#7a7a74; margin-top:6px; line-height:1.4; }
+
+  /* ---------- WALLET CARD RESULT ---------- */
+  .wallet{
+    background: linear-gradient(155deg, var(--navy) 0%, var(--navy-deep) 100%);
+    border-radius: 16px;
+    padding: 22px;
+    color: var(--paper);
+    position:relative;
+    overflow:hidden;
+    margin-top: 20px;
+  }
+  .wallet::after{
+    content:"";
+    position:absolute; bottom:-60px; left:-30px;
+    width:160px;height:160px;border-radius:50%;
+    background: radial-gradient(circle, rgba(232,89,12,0.28), transparent 70%);
+  }
+  .wallet-top{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    margin-bottom: 16px;
+  }
+  .wallet-top .who{
+    font-family:'Archivo', sans-serif;
+    font-weight:800;
+    font-size: 17px;
+  }
+  .wallet-top .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing:0.1em;
+    color: #f2b48a;
+    text-transform:uppercase;
+  }
+  .qr-box{
+    background:#fff;
+    border-radius: 10px;
+    padding: 12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width: 148px;
+    height:148px;
+    margin: 4px auto 14px;
+  }
+  .qr-box canvas, .qr-box img{ width:100%; height:100%; }
+  .wallet-foot{
+    font-size: 12.5px;
+    color:#c7ccd8;
+    text-align:center;
+    line-height:1.5;
+  }
+  .card-id{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color:#f2b48a;
+    text-align:center;
+    margin-top:10px;
+    letter-spacing:0.05em;
+  }
+  .sim-link{
+    display:block;
+    text-align:center;
+    margin-top:14px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color: var(--orange-deep);
+    text-decoration:none;
+    border: 1.5px solid var(--orange);
+    border-radius:9px;
+    padding: 10px;
+  }
+  .sim-link:hover{ background: var(--orange); color:#fff; }
+
+  /* ---------- SCAN VIEW ---------- */
+  .scan-card{
+    background:#fff;
+    border-radius:16px;
+    padding: 24px 20px;
+    text-align:center;
+    border: 1.5px solid var(--line);
+  }
+  .siren{
+    font-size: 34px;
+    margin-bottom: 8px;
+  }
+  .scan-card h2{
+    font-family:'Archivo', sans-serif;
+    font-weight:800;
+    font-size: 19px;
+    color: var(--navy);
+    margin: 0 0 8px;
+    line-height:1.3;
+  }
+  .scan-card p{
+    font-size: 14.5px;
+    color: #55554f;
+    line-height:1.5;
+    margin: 0 0 4px;
+  }
+  .alert-btn{
+    margin-top:20px;
+    width:100%;
+    background: var(--orange);
+    color:#fff;
+    font-family:'Archivo', sans-serif;
+    font-weight:800;
+    font-size: 16px;
+    border:none;
+    padding: 18px;
+    border-radius: 13px;
+    cursor:pointer;
+    box-shadow: 0 8px 20px rgba(232,89,12,0.32);
+    animation: pulse 2.2s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ box-shadow: 0 8px 20px rgba(232,89,12,0.32); }
+    50%{ box-shadow: 0 8px 28px rgba(232,89,12,0.5); }
+  }
+  .alert-btn:hover{ background: var(--orange-deep); }
+  .alert-btn:disabled{ background:#b9b0a1; box-shadow:none; cursor:not-allowed; animation:none; }
+
+  .confirm-box{
+    margin-top: 18px;
+    background: rgba(92,131,104,0.12);
+    border: 1.5px solid var(--sage);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .confirm-box .check{ font-size:22px; }
+  .confirm-box p{ color: #3c5b44; font-size: 14px; margin: 6px 0 0; }
+
+  .privacy-note{
+    margin-top: 16px;
+    font-size: 12px;
+    color: #8a8a83;
+    line-height:1.5;
+  }
+
+  .error-box{
+    background: #fdeeee;
+    border: 1.5px solid #d99;
+    border-radius: 12px;
+    padding: 16px;
+    text-align:center;
+    color:#8a3a3a;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="brand"><div class="dot"></div><span>Family Alert</span></div>
+  <div class="stage" id="app"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const app = document.getElementById('app');
+
+function esc(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function genId(){
+  return Array.from({length:8}, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)]).join('');
+}
+
+function getParam(name){
+  const url = new URL(window.location.href);
+  return url.searchParams.get(name);
+}
+
+async function apiCreateCard(name, contacts){
+  const r = await fetch('/api/cards', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ name, contacts })
+  });
+  if(!r.ok) throw new Error('No se pudo crear la tarjeta');
+  return r.json();
+}
+async function apiGetCard(id){
+  const r = await fetch(`/api/cards/${encodeURIComponent(id)}`);
+  if(r.status === 404) return null;
+  if(!r.ok) throw new Error('Error al buscar la tarjeta');
+  return r.json();
+}
+async function apiSendAlert(id){
+  const r = await fetch(`/api/cards/${encodeURIComponent(id)}/alert`, { method: 'POST' });
+  const data = await r.json();
+  if(!r.ok) throw Object.assign(new Error(data.error || 'Error al enviar la alerta'), { data, status: r.status });
+  return data;
+}
+
+function renderHome(){
+  app.innerHTML = `
+    <div class="home-hero">
+      <div class="eyebrow">Tarjeta de emergencia</div>
+      <h1>Si te detienen, tu familia se entera.</h1>
+      <p>Guarda tus contactos aquí. Si algo pasa, un solo toque les avisa — sin que nadie más vea sus números.</p>
+    </div>
+    <div class="choice-row" id="choice-row"></div>
+  `;
+  renderHomeChoices();
+}
+
+async function renderHomeChoices(){
+  const row = document.getElementById('choice-row');
+  const myCard = await getMyCard();
+
+  let mySosBtn = '';
+  if(myCard){
+    mySosBtn = `
+      <button class="choice" id="btn-mysos">
+        <div class="icon">🆘</div>
+        <div>
+          <div class="label-title">Mi botón SOS</div>
+          <div class="label-sub">Enviar la alerta yo mismo, ahora, desde mi teléfono</div>
+        </div>
+      </button>`;
+  }
+
+  row.innerHTML = `
+    ${mySosBtn}
+    <button class="choice" id="btn-create">
+      <div class="icon">🪪</div>
+      <div>
+        <div class="label-title">${myCard ? 'Crear otra tarjeta' : 'Crear mi tarjeta'}</div>
+        <div class="label-sub">Guarda tus contactos en 1 minuto</div>
+      </div>
+    </button>
+    <button class="choice" id="btn-scan">
+      <div class="icon">📷</div>
+      <div>
+        <div class="label-title">Simular escaneo de un testigo</div>
+        <div class="label-sub">Prueba qué ve alguien que encuentra una tarjeta</div>
+      </div>
+    </button>
+  `;
+  document.getElementById('btn-create').onclick = renderCreate;
+  document.getElementById('btn-scan').onclick = renderScanEntry;
+  if(myCard){
+    document.getElementById('btn-mysos').onclick = () => renderScanView(myCard, true);
+  }
+}
+
+// "Mi tarjeta" guardada localmente en este teléfono (privado, solo este dispositivo)
+async function getMyCard(){
+  try{ return localStorage.getItem('my_card_id'); }catch(e){ return null; }
+}
+async function setMyCard(id){
+  try{ localStorage.setItem('my_card_id', id); }catch(e){}
+}
+
+function renderCreate(){
+  app.innerHTML = `
+    <button class="back" id="back">← volver</button>
+    <div class="card-title">Crear tu tarjeta</div>
+    <label>Tu nombre</label>
+    <input id="name" placeholder="Ej. Rosa Martínez" />
+    <label>¿A quién avisamos?</label>
+    <div id="contacts"></div>
+    <div class="pick-row" id="pick-row"></div>
+    <div class="hint">Nadie más ve estos números. Solo se usan para avisarles a ellos.</div>
+    <button class="primary-btn" id="generate">✅ Crear mi tarjeta</button>
+    <div id="result"></div>
+  `;
+  document.getElementById('back').onclick = renderHome;
+
+  function addContactRow(name, phone){
+    const row = document.createElement('div');
+    row.className = 'contact-row';
+    row.innerHTML = `<input class="c-name" placeholder="Nombre del contacto" value="${esc(name||'')}" /><input class="c-phone" placeholder="Teléfono" value="${esc(phone||'')}" /><button class="remove-btn" title="Quitar">×</button><select class="c-channel"><option value="both">SMS + WhatsApp</option><option value="sms">Solo SMS</option><option value="whatsapp">Solo WhatsApp</option></select>`;
+    row.querySelector('.remove-btn').onclick = () => row.remove();
+    document.getElementById('contacts').appendChild(row);
+  }
+
+  const supportsPicker = ('contacts' in navigator && 'ContactsManager' in window);
+
+  if(supportsPicker){
+    // Este teléfono sí permite elegir de la libreta — mostramos solo ese camino.
+    document.getElementById('pick-row').innerHTML = `
+      <button class="pick-contact-btn" id="pick-contact" style="width:100%;">📇 Elegir de mis contactos</button>
+    `;
+    document.getElementById('pick-contact').onclick = async () => {
+      try{
+        const picked = await navigator.contacts.select(['name', 'tel'], { multiple: true });
+        picked.forEach(p => {
+          const name = (p.name && p.name[0]) || '';
+          const phone = (p.tel && p.tel[0]) || '';
+          if(phone) addContactRow(name, phone);
+        });
+      }catch(e){ /* la persona canceló, no pasa nada */ }
+    };
+  } else {
+    // Este teléfono no lo permite (ej. iPhone) — mostramos directo los campos para escribir.
+    addContactRow('', '');
+    document.getElementById('pick-row').innerHTML = `
+      <button class="add-contact" id="add-contact" style="width:100%;">+ Añadir otro contacto</button>
+    `;
+    document.getElementById('add-contact').onclick = () => addContactRow('', '');
+  }
+  document.getElementById('generate').onclick = async () => {
+    const name = document.getElementById('name').value.trim();
+    const rows = [...document.querySelectorAll('#contacts .contact-row')];
+    const contacts = rows.map(r => ({
+      name: r.querySelector('.c-name').value.trim(),
+      phone: r.querySelector('.c-phone').value.trim(),
+      channel: r.querySelector('.c-channel').value
+    })).filter(c => c.name && c.phone);
+
+    if(!name || contacts.length === 0){
+      alert('Escribe tu nombre y al menos un contacto con teléfono.');
+      return;
+    }
+
+    const btn = document.getElementById('generate');
+    btn.disabled = true;
+    btn.textContent = 'Creando tarjeta…';
+
+    let id;
+    try{
+      const created = await apiCreateCard(name, contacts);
+      id = created.id;
+    }catch(e){
+      alert('No se pudo crear la tarjeta. Intenta de nuevo en un momento.');
+      btn.disabled = false;
+      btn.textContent = 'Generar mi tarjeta y código QR';
+      return;
+    }
+
+    const scanUrl = new URL(window.location.href);
+    scanUrl.searchParams.set('card', id);
+    scanUrl.hash = '';
+
+    document.getElementById('result').innerHTML = `
+      <div class="wallet">
+        <div class="wallet-top">
+          <div>
+            <div class="tag">Family Alert · Tarjeta</div>
+            <div class="who">${esc(name)}</div>
+          </div>
+        </div>
+        <div class="qr-box" id="qr"></div>
+        <div class="wallet-foot">Si me encuentran detenido/a o en riesgo,<br>escanea este código para avisar a mi familia.</div>
+        <div class="card-id">ID ${id}</div>
+      </div>
+      <a class="sim-link" href="${scanUrl.toString()}">🔗 Abrir esta tarjeta como la vería un testigo</a>
+      <button class="add-contact" id="save-mine" style="margin-top:10px;">📱 Esta es mi tarjeta — guardar en este teléfono</button>
+      <div id="saved-msg"></div>
+      <div class="hint" style="margin-top:14px;">En el producto real, este QR se imprime en una tarjeta física de bolsillo o billetera.</div>
+    `;
+    new QRCode(document.getElementById('qr'), {
+      text: scanUrl.toString(),
+      width: 124, height: 124,
+      colorDark: "#16243f", colorLight: "#ffffff"
+    });
+    document.getElementById('save-mine').onclick = async () => {
+      await setMyCard(id);
+      document.getElementById('saved-msg').innerHTML = `<div class="hint" style="color:var(--sage);font-weight:600;">✓ Guardada. Ahora verás "Mi botón SOS" en el inicio de este teléfono.</div>`;
+    };
+  };
+}
+
+function renderScanEntry(){
+  app.innerHTML = `
+    <button class="back" id="back">← volver</button>
+    <div class="card-title">Simular escaneo</div>
+    <p style="font-size:14px;color:#55554f;margin-top:-8px;">Escribe el ID de una tarjeta ya creada (o usa el enlace que generó tu tarjeta).</p>
+    <label>ID de tarjeta</label>
+    <input id="cardid" placeholder="Ej. AB3D9F2K" style="text-transform:uppercase;" />
+    <button class="primary-btn" id="go">Ver tarjeta escaneada</button>
+  `;
+  document.getElementById('back').onclick = renderHome;
+  document.getElementById('go').onclick = () => {
+    const id = document.getElementById('cardid').value.trim().toUpperCase();
+    if(!id) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('card', id);
+    window.location.href = url.toString();
+  };
+}
+
+async function renderScanView(id, isOwner){
+  app.innerHTML = `<div class="scan-card"><p>Cargando tarjeta…</p></div>`;
+
+  let card;
+  try{
+    card = await apiGetCard(id);
+  }catch(e){
+    card = null;
+  }
+
+  if(!card){
+    app.innerHTML = `
+      <div class="scan-card">
+        <div class="siren">⚠️</div>
+        <h2>Tarjeta no encontrada</h2>
+        <p>Este código no corresponde a ninguna tarjeta activa.</p>
+        <button class="back" id="back" style="margin-top:14px;">← volver al inicio</button>
+      </div>
+    `;
+    document.getElementById('back').onclick = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('card');
+      window.location.href = url.toString();
+    };
+    return;
+  }
+
+  const heading = isOwner
+    ? '¿Necesitas avisar a tu familia ahora?'
+    : '¿Encontró esta tarjeta durante una emergencia?';
+  const sub = isOwner
+    ? `Esto enviará la alerta a tus contactos de emergencia guardados.`
+    : `Ayude a alertar a los contactos de emergencia de <strong>${esc(card.name)}</strong>.`;
+  const btnLabel = isOwner ? '🆘 ENVIAR MI ALERTA AHORA' : '🚨 ALERTAR A SU FAMILIA';
+  const backBtn = isOwner ? `<button class="back" id="back-home" style="margin-top:14px;">← volver</button>` : '';
+
+  app.innerHTML = `
+    <div class="scan-card">
+      <div class="siren">${isOwner ? '🆘' : '🚨'}</div>
+      <h2>${heading}</h2>
+      <p>${sub}</p>
+      <button class="alert-btn" id="alert-btn" ${card.onCooldown ? 'disabled' : ''}>
+        ${card.onCooldown ? 'Alerta ya enviada' : btnLabel}
+      </button>
+      <div id="afterAlert"></div>
+      <div class="privacy-note">No se muestran ni se registran los números de los contactos. Solo se envía la alerta.</div>
+      ${backBtn}
+    </div>
+  `;
+  if(isOwner){
+    document.getElementById('back-home').onclick = () => {
+      renderHome();
+    };
+  }
+
+  if(card.onCooldown){
+    const mins = Math.ceil(card.cooldownRemainingMs / 60000);
+    document.getElementById('afterAlert').innerHTML = `
+      <div class="confirm-box">
+        <div class="check">✅</div>
+        <p>Ya se envió una alerta para esta persona hace poco. Vuelve a intentar en ${mins} min si la situación continúa.</p>
+      </div>
+    `;
+    return;
+  }
+
+  document.getElementById('alert-btn').onclick = async () => {
+    const btn = document.getElementById('alert-btn');
+    btn.disabled = true;
+    btn.textContent = 'Enviando alerta…';
+
+    let result;
+    try{
+      result = await apiSendAlert(id);
+    }catch(e){
+      if(e.status === 429){
+        const mins = Math.ceil((e.data.cooldownRemainingMs || 0) / 60000);
+        document.getElementById('afterAlert').innerHTML = `
+          <div class="confirm-box">
+            <div class="check">✅</div>
+            <p>Ya se envió una alerta para esta persona hace poco. Vuelve a intentar en ${mins} min si la situación continúa.</p>
+          </div>
+        `;
+      } else {
+        document.getElementById('afterAlert').innerHTML = `
+          <div class="error-box">No se pudo enviar la alerta. Intenta de nuevo en un momento.</div>
+        `;
+        btn.disabled = false;
+        btn.textContent = btnLabel;
+      }
+      return;
+    }
+
+    const channelSummary = [
+      result.smsSent ? `${result.smsSent} por SMS` : null,
+      result.whatsappSent ? `${result.whatsappSent} por WhatsApp` : null
+    ].filter(Boolean).join(' y ') || 'sin canales configurados';
+
+    document.getElementById('afterAlert').innerHTML = `
+      <div class="confirm-box">
+        <div class="check">✅</div>
+        <p>Alerta enviada a ${result.contactsNotified} contacto${result.contactsNotified > 1 ? 's' : ''} de emergencia de ${esc(card.name)} (${channelSummary}). Gracias por ayudar.</p>
+      </div>
+    `;
+    btn.textContent = 'Alerta ya enviada';
+  };
+}
+
+// Registrar el service worker (necesario para que "Agregar a pantalla de inicio" funcione como app)
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// Router
+// Si alguien escanea un QR (?card=ID), siempre ve la vista de testigo, sin importar el teléfono.
+// Si NO hay ?card= en la URL, revisamos si este teléfono ya tiene "su" tarjeta guardada:
+//   - Si sí: abre directo el botón SOS (esto es lo que pasa al tocar el ícono en pantalla de inicio).
+//   - Si no: muestra el menú de inicio normal.
+(async () => {
+  const cardParam = getParam('card');
+  if(cardParam){
+    renderScanView(cardParam.toUpperCase(), false);
+    return;
+  }
+  const myCard = await getMyCard();
+  if(myCard){
+    renderScanView(myCard, true);
+  } else {
+    renderHome();
+  }
+})();
+
+</script>
+</body>
+</html>
