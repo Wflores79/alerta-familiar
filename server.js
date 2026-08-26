@@ -42,6 +42,51 @@ if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
 
 const COOLDOWN_MS = 5 * 60 * 1000;
 
+// ---------- ADMIN: generar tarjetas EN BLANCO por adelantado ----------
+// Para cuando imprimes tarjetas físicas antes de saber quién las va a comprar.
+// Cada una tiene un código único, sin nombre ni contactos todavía.
+// Protegido con una clave secreta (ADMIN_KEY) para que solo tú puedas usarlo.
+app.post('/api/admin/generate-cards', (req, res) => {
+  const { count, adminKey } = req.body;
+
+  if (!process.env.ADMIN_KEY || adminKey !== process.env.ADMIN_KEY) {
+    return res.status(403).json({ error: 'Clave de administrador incorrecta.' });
+  }
+  const n = Math.min(parseInt(count) || 1, 200);
+
+  const db = loadDB();
+  const ids = [];
+  for (let i = 0; i < n; i++) {
+    const id = genId();
+    db.cards[id] = { name: null, contacts: [], created_at: Date.now() };
+    ids.push(id);
+  }
+  saveDB(db);
+  res.json({ ids });
+});
+
+// Activar una tarjeta EN BLANCO que ya existía (comprada físicamente),
+// asignándole nombre y contactos por primera vez.
+app.put('/api/cards/:id/activate', (req, res) => {
+  const { name, contacts } = req.body;
+  const db = loadDB();
+  const card = db.cards[req.params.id];
+
+  if (!card) return res.status(404).json({ error: 'Tarjeta no encontrada.' });
+  if (card.name) return res.status(400).json({ error: 'Esta tarjeta ya fue activada.' });
+  if (!name || !Array.isArray(contacts) || contacts.length === 0) {
+    return res.status(400).json({ error: 'Falta nombre o contactos.' });
+  }
+
+  card.name = name;
+  card.contacts = contacts
+    .filter(c => c.name && c.phone)
+    .map(c => ({ name: c.name, phone: c.phone, channel: c.channel || 'both' }));
+  saveDB(db);
+
+  res.json({ id: req.params.id, name });
+});
+
 app.post('/api/cards', (req, res) => {
   const { name, contacts } = req.body;
   if (!name || !Array.isArray(contacts) || contacts.length === 0) {
@@ -64,11 +109,18 @@ app.get('/api/cards/:id', (req, res) => {
   const db = loadDB();
   const card = db.cards[req.params.id];
   if (!card) return res.status(404).json({ error: 'Tarjeta no encontrada.' });
+
+  if (!card.name) {
+    // Tarjeta en blanco: aún no se ha activado con nombre y contactos.
+    return res.json({ id: req.params.id, activated: false });
+  }
+
   const lastAlert = db.alerts[req.params.id];
   const onCooldown = lastAlert && Date.now() - lastAlert.last_sent_at < COOLDOWN_MS;
   const cooldownRemainingMs = onCooldown ? COOLDOWN_MS - (Date.now() - lastAlert.last_sent_at) : 0;
   res.json({
     id: req.params.id,
+    activated: true,
     name: card.name,
     contactCount: card.contacts.length,
     onCooldown,
