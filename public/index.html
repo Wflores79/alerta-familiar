@@ -418,6 +418,15 @@ async function apiGetCard(id){
   if(!r.ok) throw new Error('Error al buscar la tarjeta');
   return r.json();
 }
+async function apiActivateCard(id, name, contacts){
+  const r = await fetch(`/api/cards/${encodeURIComponent(id)}/activate`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ name, contacts })
+  });
+  if(!r.ok) throw new Error('No se pudo activar la tarjeta');
+  return r.json();
+}
 async function apiSendAlert(id){
   const r = await fetch(`/api/cards/${encodeURIComponent(id)}/alert`, { method: 'POST' });
   const data = await r.json();
@@ -485,20 +494,24 @@ async function setMyCard(id){
   try{ localStorage.setItem('my_card_id', id); }catch(e){}
 }
 
-function renderCreate(){
+function renderCreate(activateId){
+  const isActivating = !!activateId;
   app.innerHTML = `
-    <button class="back" id="back">← volver</button>
-    <div class="card-title">Crear tu tarjeta</div>
+    ${isActivating ? '' : '<button class="back" id="back">← volver</button>'}
+    <div class="card-title">${isActivating ? 'Activa tu tarjeta' : 'Crear tu tarjeta'}</div>
+    ${isActivating ? `<div class="hint" style="margin-top:-8px;margin-bottom:14px;">ID de tu tarjeta: <strong>${esc(activateId)}</strong></div>` : ''}
     <label>Tu nombre</label>
     <input id="name" placeholder="Ej. Rosa Martínez" />
     <label>¿A quién avisamos?</label>
     <div id="contacts"></div>
     <div class="pick-row" id="pick-row"></div>
     <div class="hint">Nadie más ve estos números. Solo se usan para avisarles a ellos.</div>
-    <button class="primary-btn" id="generate">✅ Crear mi tarjeta</button>
+    <button class="primary-btn" id="generate">✅ ${isActivating ? 'Activar mi tarjeta' : 'Crear mi tarjeta'}</button>
     <div id="result"></div>
   `;
-  document.getElementById('back').onclick = renderHome;
+  if(!isActivating){
+    document.getElementById('back').onclick = renderHome;
+  }
 
   function addContactRow(name, phone){
     const row = document.createElement('div');
@@ -549,16 +562,21 @@ function renderCreate(){
 
     const btn = document.getElementById('generate');
     btn.disabled = true;
-    btn.textContent = 'Creando tarjeta…';
+    btn.textContent = isActivating ? 'Activando tarjeta…' : 'Creando tarjeta…';
 
     let id;
     try{
-      const created = await apiCreateCard(name, contacts);
-      id = created.id;
+      if(isActivating){
+        const activated = await apiActivateCard(activateId, name, contacts);
+        id = activated.id;
+      } else {
+        const created = await apiCreateCard(name, contacts);
+        id = created.id;
+      }
     }catch(e){
-      alert('No se pudo crear la tarjeta. Intenta de nuevo en un momento.');
+      alert('No se pudo guardar la tarjeta. Intenta de nuevo en un momento.');
       btn.disabled = false;
-      btn.textContent = 'Generar mi tarjeta y código QR';
+      btn.textContent = isActivating ? 'Activar mi tarjeta' : 'Generar mi tarjeta y código QR';
       return;
     }
 
@@ -575,13 +593,13 @@ function renderCreate(){
           </div>
         </div>
         <div class="qr-box" id="qr"></div>
-        <div class="wallet-foot">Si me encuentran detenido/a o en riesgo,<br>escanea este código para avisar a mi familia.</div>
+        <div class="wallet-foot">${isActivating ? '¡Tu tarjeta ya está activa!<br>Guárdala en tu teléfono para usar tu botón SOS.' : 'Si me encuentran detenido/a o en riesgo,<br>escanea este código para avisar a mi familia.'}</div>
         <div class="card-id">ID ${id}</div>
       </div>
-      <a class="sim-link" href="${scanUrl.toString()}">🔗 Abrir esta tarjeta como la vería un testigo</a>
+      ${isActivating ? '' : `<a class="sim-link" href="${scanUrl.toString()}">🔗 Abrir esta tarjeta como la vería un testigo</a>`}
       <button class="add-contact" id="save-mine" style="margin-top:10px;">📱 Esta es mi tarjeta — guardar en este teléfono</button>
       <div id="saved-msg"></div>
-      <div class="hint" style="margin-top:14px;">En el producto real, este QR se imprime en una tarjeta física de bolsillo o billetera.</div>
+      ${isActivating ? '' : '<div class="hint" style="margin-top:14px;">En el producto real, este QR se imprime en una tarjeta física de bolsillo o billetera.</div>'}
     `;
     new QRCode(document.getElementById('qr'), {
       text: scanUrl.toString(),
@@ -638,6 +656,13 @@ async function renderScanView(id, isOwner){
       url.searchParams.delete('card');
       window.location.href = url.toString();
     };
+    return;
+  }
+
+  if(card.activated === false){
+    // Esta es una tarjeta física ya impresa pero que nadie ha activado todavía.
+    // Mostramos el formulario para que el comprador registre su nombre y contactos.
+    renderCreate(id);
     return;
   }
 
@@ -727,12 +752,71 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 
+function renderAdmin(){
+  app.innerHTML = `
+    <button class="back" id="back">← volver</button>
+    <div class="card-title">Generar lote de tarjetas</div>
+    <div class="hint">Esto crea códigos en blanco (sin nombre ni contactos) para mandar a imprimir. Cada persona los activa después con sus propios datos.</div>
+    <label>Clave de administrador</label>
+    <input id="admin-key" type="password" placeholder="Tu clave secreta" />
+    <label>¿Cuántas tarjetas?</label>
+    <input id="count" type="number" value="10" min="1" max="200" />
+    <button class="primary-btn" id="generate-batch">Generar tarjetas</button>
+    <div id="batch-result"></div>
+  `;
+  document.getElementById('back').onclick = renderHome;
+  document.getElementById('generate-batch').onclick = async () => {
+    const adminKey = document.getElementById('admin-key').value.trim();
+    const count = parseInt(document.getElementById('count').value) || 1;
+    const btn = document.getElementById('generate-batch');
+    btn.disabled = true;
+    btn.textContent = 'Generando…';
+
+    try{
+      const r = await fetch('/api/admin/generate-cards', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ count, adminKey })
+      });
+      const data = await r.json();
+      if(!r.ok) throw new Error(data.error || 'Error');
+
+      const baseUrl = new URL(window.location.href);
+      baseUrl.search = '';
+      baseUrl.hash = '';
+
+      const rows = data.ids.map(id => {
+        const url = `${baseUrl.toString()}?card=${id}`;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:8px 0;font-family:'IBM Plex Mono',monospace;font-size:13px;">
+          <span>${id}</span>
+          <a href="${url}" target="_blank" style="color:var(--orange-deep);">${url}</a>
+        </div>`;
+      }).join('');
+
+      document.getElementById('batch-result').innerHTML = `
+        <div class="confirm-box" style="margin-top:16px;">
+          <p>✅ ${data.ids.length} tarjetas generadas. Copia esta lista para tu imprenta (cada link genera el QR de esa tarjeta específica al abrirlo).</p>
+        </div>
+        <div style="margin-top:12px;max-height:340px;overflow-y:auto;">${rows}</div>
+      `;
+    }catch(e){
+      document.getElementById('batch-result').innerHTML = `<div class="error-box">No se pudo generar el lote. Revisa tu clave e intenta de nuevo.</div>`;
+    }
+    btn.disabled = false;
+    btn.textContent = 'Generar tarjetas';
+  };
+}
+
 // Router
 // Si alguien escanea un QR (?card=ID), siempre ve la vista de testigo, sin importar el teléfono.
 // Si NO hay ?card= en la URL, revisamos si este teléfono ya tiene "su" tarjeta guardada:
 //   - Si sí: abre directo el botón SOS (esto es lo que pasa al tocar el ícono en pantalla de inicio).
 //   - Si no: muestra el menú de inicio normal.
 (async () => {
+  if(getParam('admin') !== null){
+    renderAdmin();
+    return;
+  }
   const cardParam = getParam('card');
   if(cardParam){
     renderScanView(cardParam.toUpperCase(), false);
