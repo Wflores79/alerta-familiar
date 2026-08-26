@@ -196,13 +196,12 @@ app.post('/api/cards/:id/alert', async (req, res) => {
   });
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Alerta Familiar backend corriendo en el puerto ${PORT}`);
-  console.log(`Twilio configurado: ${twilioClient ? 'SI' : 'NO (revisa tus variables)'}`);
-});
+199  app.use(express.static(path.join(__dirname, 'public')));
+200  
+201  app.get('/privacy', (req, res) => {
+202    res.sendFile(path.join(__dirname, 'public', 'privacy-policy.html'));
+203  });
+204  
+205  app.get('*', (req, res) => {
+206    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+207  });
