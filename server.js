@@ -67,7 +67,7 @@ app.post('/api/admin/generate-cards', (req, res) => {
 
 // Activar una tarjeta EN BLANCO que ya existía (comprada físicamente),
 // asignándole nombre y contactos por primera vez.
-app.put('/api/cards/:id/activate', (req, res) => {
+app.put('/api/cards/:id/activate', async (req, res) => {
   const { name, contacts } = req.body;
   const db = loadDB();
   const card = db.cards[req.params.id];
@@ -83,6 +83,29 @@ app.put('/api/cards/:id/activate', (req, res) => {
     .filter(c => c.name && c.phone)
     .map(c => ({ name: c.name, phone: c.phone, channel: c.channel || 'both' }));
   saveDB(db);
+
+  // Enviar SMS de confirmación a cada contacto recién registrado.
+  const confirmationText =
+    `ALERTA FAMILIAR: Ha sido registrado como contacto de emergencia de ${name}. ` +
+    `Recibira alertas SMS si esta persona activa una alerta. ` +
+    `Responda STOP para cancelar, HELP para ayuda.`;
+
+  if (twilioClient) {
+    for (const contact of card.contacts) {
+      try {
+        const wantsSms = contact.channel === 'sms' || contact.channel === 'both';
+        if (wantsSms && process.env.TWILIO_SMS_NUMBER) {
+          await twilioClient.messages.create({
+            body: confirmationText,
+            from: process.env.TWILIO_SMS_NUMBER,
+            to: contact.phone
+          });
+        }
+      } catch (err) {
+        console.error(`Error enviando confirmacion a ${contact.phone}:`, err.message);
+      }
+    }
+  }
 
   res.json({ id: req.params.id, name });
 });
@@ -150,7 +173,7 @@ app.post('/api/cards/:id/alert', async (req, res) => {
   const messageText =
     `ALERTA FAMILIAR: Un testigo reporta que ${card.name} podria estar siendo ` +
     `detenido/a o retenido/a por autoridades de inmigracion. Por favor active ahora ` +
-    `su Plan Familiar de Emergencia.`;
+    `su Plan Familiar de Emergencia. Responda STOP para cancelar, HELP para ayuda.`;
 
   let smsSent = 0;
   let waSent = 0;
