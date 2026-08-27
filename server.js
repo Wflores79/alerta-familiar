@@ -13,7 +13,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const dbPath = process.env.DB_PATH || path.join(__dirname, 'data.json');
+const dbPath = process.env.DATA_FILE_PATH || process.env.DB_PATH || path.join(__dirname, 'data.json');
 
 function loadDB() {
   try {
